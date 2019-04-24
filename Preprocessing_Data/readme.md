@@ -1,3 +1,3 @@
 # Preprocessing
 
-Theses folder is only for preprocessing the data
+This folder is only for preprocessing the data
