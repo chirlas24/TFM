@@ -1,166 +1,48 @@
 ###############################################################################
 ## Funciones de preprocesamiento de los datos para construccion del database ##
 ###############################################################################
-
-def get_id(dct):
-    ''' Function for getting the id of a bike track'''
-    return dct['$oid'] 
-
-class GeoJSON(object):
-    '''Class for the tracks locations reports of bikes'''
-    
-    def __init__(self, track):
-        self.track = track
-     
-    def no_points(self):
-        '''times of reports of each track'''
-        return len(self.track['features'])
-    
-    def coordinates(self):
-        '''coordinates of the location'''
-        coordinates_list = []
-        for d in self.track['features']:
-            coordinates_list.append(d['geometry']['coordinates'])
-        return coordinates_list
-
-    def adresses(self):
-        '''Adress of the location'''
-        adresses_list = []
-        for d in self.track['features']:
-            adresses_list.append(d['properties']['var'])
-        return adresses_list
- 
-    def postal_code(self):
-        '''Postal code of the location'''
-        cp_list = []
-        for d in self.track['features']:
-            adress = d['properties']['var']
-            adress_list = adress.split(",")
-            cp_list.append(adress_list[0])
-        return cp_list
-
-    def streets(self):
-        '''Street of the location'''
-        streets_list = []
-        for d in self.track['features']:
-            adress = d['properties']['var']
-            adress_list = adress.split(",")
-            streets_list.append(adress_list[4])
-        return streets_list
-
-    def speed(self):
-        '''Speed at the moment of the report'''
-        speed_list = []
-        for d in self.track['features']:
-            speed_list.append(d['properties']['speed'])
-        return speed_list
-
-    def time(self):
-        '''Time in seconds of the duration of the track'''
-        time_list = []
-        for d in self.track['features']:
-            time_list.append(d['properties']['secondsfromstart'])
-        return time_list
-
+import pandas as pd
 from datetime import datetime
+import os
 
-def date_process_tracks(date):
+def date_process_stations(date):
     '''Convert date format of the data set into date_datetime format'''
-    data_aux = date['$date'].split("T")
+    data_aux = date.split("T")
     time_aux = data_aux[1].split(":")
-    date_list = [data_aux[0], time_aux[0]]
+    date_list = [data_aux[0], time_aux[0], time_aux[1]]
     date_string = ("-").join(date_list)
-    date_datetime = datetime.strptime(date_string, '%Y-%m-%d-%H')
+    date_datetime = datetime.strptime(date_string, '%Y-%m-%d-%H-%M')
     return date_datetime
-		
-class station_status(object):
-    
-    def __init__(self, state):
-        self.state = state
-     
-    def activate(self):
-        '''Returns if the station is activated or it is not'''
-        return self.state['activate']
-    
-    def name(self):
-        '''Returns the name of the station'''
-        return self.state['name']
-    
-    def reservations_count(self):
-        '''Returns the reservetations booked at the time of the report'''
-        return self.state['reservations_count']
 
-    def light(self):
-        '''Returns the ocuppation state of the station:
-            0=LOW
-            1=MEDIUM
-            3=HIGHT'''
-        return self.state['light']
-    
-    def total_bases(self):
-        '''Number of slots for bikes in the station
-        at the time of the report'''
-        return self.state['total_bases']
-    
-    def free_bases(self):
-        '''Number of free slots for bikes in the station
-        at the time of the report''' 
-        return self.state['free_bases']
-    
-    def number(self):
-        '''Logic number asigned to the station''' 
-        return self.state['number']
-    
-    def longitude(self):
-        '''Longitude of the location'''
-        return self.state['longitude']
-    
-    def no_available(self):
-        '''Returns if the station is avaliable or it is not'''
-        return self.state['no_available']
-    
-    def address(self):
-        '''Adress of the location of the station'''
-        return self.state['address']
-    
-    def latitude(self):
-        '''Latitude of the location'''
-        return self.state['latitude']
-    
-    def dock_bikes(self):
-        '''Number of bikes which are connected to the station'''
-        return self.state['dock_bikes']
-    
-    def id_(self):
-        '''Code for the station'''
-        return self.state['id']
-				
-def make_dataset(df, value, verbose=False):
+def make_dataset(df, value, verbose=True):
     '''Make a times-series flat dataset with one type of data (value) of the dictionary.
         i.e. date vs activation of the station'''
     
     df_aux = df.copy()
     
-    for i, report_list_time in enumerate(df_aux['stations']):
+    list_stations = df_aux['stations'][0]
+    
+    for j, station in enumerate(list_stations):
         
         if verbose:
-            if i == 0:
-                verbose_fun(i+1, len(df_aux['stations']), first=True)
+            if j == 0:
+                verbose_fun(j+1, len(list_stations), first=True, last=False)
+            elif j+1 == len(list_stations):
+                verbose_fun(j+1, len(list_stations), first=False, last=True)
             else:
-                verbose_fun(i+1, len(df_aux['stations']), first=False)
-
+                verbose_fun(j+1, len(list_stations), first=False, last=False)
         
-        for j, station in enumerate(df_aux['stations'][i]):
-            station_id = str(df['stations'][i][j]['id']) + '-' + df['stations'][i][j]['number']
-            df_aux[station_id + '_' + value] = df['stations'].map(lambda x : x[j][value])
-    
+        
+        station_id = str(station['id']) + '-' + station['number']
+        df_aux[station_id + '_' + value] = df['stations'].map(lambda x : x[j][value])
+
     df_aux.drop('stations', axis=1, inplace=True)
     
     return df_aux
 
-def verbose_fun(part, total, first=True):
+def verbose_fun(part, total, first=True, last=False):
     '''This function is complementary to long calculation functions
-        in order to visulize the process'''
+        in order to visualise the process'''
     if first: 
         global _10
         global _20
@@ -207,21 +89,61 @@ def verbose_fun(part, total, first=True):
     if part/total >= 0.9 and _90:
         print("0%[------------------90%--]100%")
         _90 = False
-    if part/total > 0.9 and not(_90):
+    if last:
         print("DATAFRAME COMPLETED")
-				
-def date_process_stations(date):
-    '''Convert date format of the data set into date_datetime format'''
-    data_aux = date.split("T")
-    time_aux = data_aux[1].split(":")
-    date_list = [data_aux[0], time_aux[0], time_aux[1]]
-    date_string = ("-").join(date_list)
-    date_datetime = datetime.strptime(date_string, '%Y-%m-%d-%H-%M')
-    return date_datetime
+
+def load_dict_from_file(path):
+    '''For loading the Postal Codes dictionary of the statios'''
+    path = os.path.join(path, 'postal_codes.txt' )
+    f = open(path,'r')
+    data=f.read()
+    f.close()
+    return eval(data)
+
+def make_dataset_by_postal_code(df, value, postal_codes_dict, verbose=False):
+    '''Make a times-series flat dataset with one type of data (value) of the dictionary.
+        i.e. date vs activation of the station'''
+    
+    df_aux = df.copy()
+    
+    list_stations = df_aux['stations'][0]
+    
+    for j, station in enumerate(list_stations):
+        
+        if verbose:
+            if j == 0:
+                verbose_fun(j+1, len(list_stations), first=True, last=False)
+            elif j+1 == len(list_stations):
+                verbose_fun(j+1, len(list_stations), first=False, last=True)
+            else:
+                verbose_fun(j+1, len(list_stations), first=False, last=False)
+        
+        
+        station_id = str(station['id']) + '-' + station['number']
+    
+        for postal_code in postal_codes_dict:
+
+            if station_id in postal_codes_dict[postal_code]:
+                column_name = postal_code + '_' + value
+
+                if column_name not in df_aux.columns:
+                    df_aux[column_name] = df['stations'].map(lambda x : x[j][value])
+                    break
+                else:
+                    df_aux[column_name] = df_aux[column_name] + df['stations'].map(lambda x : x[j][value])
+                    break
+
+    df_aux.drop('stations', axis=1, inplace=True)
+    
+    return df_aux
 		
-def make_all_dataset(data_list, value, verbose=True):
+def make_all_dataset(data_path, value, by_postal_code=False, verbose=True):
+    '''For making the whole dataset with the all .json files'''
 
     df_all = pd.DataFrame()
+    
+    data_list = os.listdir(data_path)
+    data_list = list(filter(lambda x: '.json' in x, data_list))
 
     for i, file in enumerate(data_list):
 
@@ -231,13 +153,17 @@ def make_all_dataset(data_list, value, verbose=True):
                 else:
                     verbose_fun(i+1, len(data_list), first=False)
 
-        path_aux = os.path.join('DATA' ,file)
+        path_aux = os.path.join(data_path ,file)
         df_aux = pd.read_json(path_aux, lines=True)
 
         df_aux['Date'] = df_aux['_id'].map(date_process_stations)
         df_aux.drop('_id', inplace=True, axis=1)
-
-        df_aux = make_dataset(df_aux, value)
+        
+        if by_postal_code:
+            postal_codes_dict = load_dict_from_file(data_path)
+            df_aux = make_dataset_by_postal_code(df_aux, value, postal_codes_dict, verbose=False)
+        else:
+            df_aux = make_dataset(df_aux, value, verbose=False)
 
         if df_all.empty:
             df_all = df_aux
@@ -247,6 +173,11 @@ def make_all_dataset(data_list, value, verbose=True):
         if verbose:
             print("=============================")
             print(file, "added to DataSet")
+            print("=============================")
+    
+    df_all.sort_values('Date', ascending = True, inplace = True)
+    df_all.reset_index(inplace=True, drop=True)
+    return df_all
             print("=============================")
     
     return df_all
