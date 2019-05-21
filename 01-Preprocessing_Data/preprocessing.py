@@ -178,6 +178,3 @@ def make_all_dataset(data_path, value, by_postal_code=False, verbose=True):
     df_all.sort_values('Date', ascending = True, inplace = True)
     df_all.reset_index(inplace=True, drop=True)
     return df_all
-            print("=============================")
-    
-    return df_all
