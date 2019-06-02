@@ -18,6 +18,12 @@ def make_dataset(df, value, verbose=True):
     '''Make a times-series flat dataset with one type of data (value) of the dictionary.
         i.e. date vs activation of the station'''
     
+    def no_available(x):
+        if x[j]['no_available'] == 0:
+            return x[j][value]
+        else:
+            return 0
+    
     df_aux = df.copy()
     
     list_stations = df_aux['stations'][0]
@@ -38,7 +44,7 @@ def make_dataset(df, value, verbose=True):
         if station_id in ['23-21a', '24-21b', '37-33', '45-41']:
             pass
         else:
-            df_aux[station_id + '_' + value] = df['stations'].map(lambda x : x[j][value])
+            df_aux[station_id + '_' + value] = df['stations'].map(no_available)
 
     df_aux.drop('stations', axis=1, inplace=True)
     
@@ -104,11 +110,19 @@ def load_dict_from_file(path):
     f.close()
     return eval(data)
 
+make_dataset_by_postal_code(df, value, postal_codes_dict, verbose=False)
 def make_dataset_by_postal_code(df, value, postal_codes_dict, verbose=False):
     '''Make a times-series flat dataset with one type of data (value) of the dictionary.
         i.e. date vs activation of the station'''
     
     df_aux = df.copy()
+    
+    def no_available(x):
+        if x[j]['no_available'] == 0:
+            return x[j][value]
+        else:
+            return 0
+    
     
     list_stations = df_aux['stations'][0]
     
@@ -126,18 +140,18 @@ def make_dataset_by_postal_code(df, value, postal_codes_dict, verbose=False):
         station_id = str(station['id']) + '-' + station['number']
     
         for postal_code in postal_codes_dict:
-
+​
             if station_id in postal_codes_dict[postal_code]:
                 column_name = postal_code + '_' + value
                 if column_name in ['23-21a', '24-21b', '37-33', '45-41']:
                     pass
                 elif column_name not in df_aux.columns:
-                    df_aux[column_name] = df['stations'].map(lambda x : x[j][value])
+                    df_aux[column_name] = df['stations'].map(no_available)
                     break
                 else:
-                    df_aux[column_name] = df_aux[column_name] + df['stations'].map(lambda x : x[j][value])
+                    df_aux[column_name] = df_aux[column_name] + df['stations'].map(no_available)
                     break
-
+​
     df_aux.drop('stations', axis=1, inplace=True)
     
     return df_aux
@@ -195,3 +209,17 @@ def total_bases_dataset(data_path, by_postal_code=True):
     total_bases['Date'] = df_free_bases_pc['Date']
     total_bases = total_bases[columns]
     return total_bases
+
+def make_df_occupation_rate(df_dock_bikes, df_total_bases):
+    df_dock_bikes.set_index('Date', inplace=True)
+    df_total_bases.set_index('Date', inplace=True)
+    df_dock_bikes = df_dock_bikes.resample('D').mean()
+    df_total_bases = df_total_bases.resample('D').mean()
+    df_dock_bikes_np = df_dock_bikes[df_dock_bikes.columns].values
+    df_total_bases_np = df_total_bases[df_total_bases.columns].values
+    df_occupation_rate_np = df_dock_bikes_np / df_total_bases_np
+    df_occupation_rate = pd.DataFrame(df_occupation_rate_np)
+    columns = [x.split("_")[0] + "_" + "OccupationRate" for x in df_dock_bikes.columns]
+    df_occupation_rate.columns = columns
+    df_occupation_rate.index = df_dock_bikes.index
+    return df_occupation_rate
