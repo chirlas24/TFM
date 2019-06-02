@@ -183,3 +183,15 @@ def make_all_dataset(data_path, value, by_postal_code=False, verbose=True):
     df_all.sort_values('Date', ascending = True, inplace = True)
     df_all.reset_index(inplace=True, drop=True)
     return df_all
+
+def total_bases_dataset(data_path, by_postal_code=True):
+    df_dock_bikes_pc = make_all_dataset(data_path, 'dock_bikes', by_postal_code=by_postal_code, verbose=False)
+    df_free_bases_pc = make_all_dataset(data_path, 'free_bases', by_postal_code=by_postal_code, verbose=False)
+    np_total_bases = df_dock_bikes_pc[df_dock_bikes_pc.columns[1:]].values + df_free_bases_pc[df_free_bases_pc.columns[1:]].values
+    total_bases = pd.DataFrame(np_total_bases)
+    columns = list(map(lambda x: x.split("_")[0] + "_" + "total_bases", df_dock_bikes_pc.columns[1:]))
+    total_bases.columns = columns
+    columns = ['Date'] + columns
+    total_bases['Date'] = df_free_bases_pc['Date']
+    total_bases = total_bases[columns]
+    return total_bases
