@@ -110,7 +110,6 @@ def load_dict_from_file(path):
     f.close()
     return eval(data)
 
-make_dataset_by_postal_code(df, value, postal_codes_dict, verbose=False)
 def make_dataset_by_postal_code(df, value, postal_codes_dict, verbose=False):
     '''Make a times-series flat dataset with one type of data (value) of the dictionary.
         i.e. date vs activation of the station'''
@@ -140,7 +139,7 @@ def make_dataset_by_postal_code(df, value, postal_codes_dict, verbose=False):
         station_id = str(station['id']) + '-' + station['number']
     
         for postal_code in postal_codes_dict:
-​
+
             if station_id in postal_codes_dict[postal_code]:
                 column_name = postal_code + '_' + value
                 if column_name in ['23-21a', '24-21b', '37-33', '45-41']:
@@ -151,7 +150,7 @@ def make_dataset_by_postal_code(df, value, postal_codes_dict, verbose=False):
                 else:
                     df_aux[column_name] = df_aux[column_name] + df['stations'].map(no_available)
                     break
-​
+
     df_aux.drop('stations', axis=1, inplace=True)
     
     return df_aux
